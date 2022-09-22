@@ -1,14 +1,15 @@
-package controllers
+package auth
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/babalolajnr/go-todo-api/config"
 	"github.com/babalolajnr/go-todo-api/database"
 	"github.com/babalolajnr/go-todo-api/models"
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt"
+	jwt "github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -110,7 +111,6 @@ func Register(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"status": "error", "message": "Review your input", "data": err})
 	}
 
-
 	if input.Password != input.ConfirmPassword {
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"status": "error", "message": "Password field does not match confirm password field", "data": nil})
 	}
@@ -128,6 +128,10 @@ func Register(c *fiber.Ctx) error {
 		Password: hash,
 	}
 
+	if err := db.Where("username = ?", user.Username).First(&user).Error; err == nil {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"status": "error", "message": "username is already taken. Try another 😉", "data": err})
+	}
+
 	if err := db.Create(&user).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Couldn't create user", "data": err})
 	}
@@ -143,4 +147,25 @@ func Register(c *fiber.Ctx) error {
 func hashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	return string(bytes), err
+}
+
+func ValidToken(t *jwt.Token, id string) bool {
+	n, err := strconv.Atoi(id)
+	if err != nil {
+		return false
+	}
+
+	claims := t.Claims.(jwt.MapClaims)
+	uid := int(claims["user_id"].(float64))
+
+	return uid == n
+}
+
+func ExtractUserId(c *fiber.Ctx) int {
+	token := c.Locals("user").(*jwt.Token)
+	claims := token.Claims.(jwt.MapClaims)
+
+	id := int(claims["user_id"].(float64))
+
+	return id
 }
