@@ -85,6 +85,21 @@ func getUserByUsername(username string) (*models.User, error) {
 	return &user, nil
 }
 
+func GetUserById(id int) (*models.User, error) {
+	db := database.DB.Db
+
+	var user models.User
+
+	if err := db.First(&user, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}
+
 func checkPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
