@@ -25,12 +25,20 @@ func Create(c *fiber.Ctx) error {
 
 	id := auth.ExtractUserId(c)
 
+	// Get user
+	user, err := auth.GetUserById(id)
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Unable to find user", "data": nil})
+	}
+
 	todo := models.Todo{
 		Title:       createTodoInput.Title,
 		Description: createTodoInput.Description,
 		Completed:   false,
-		UserID:      id,
 	}
+
+	todo.User = *user
 
 	db := database.DB.Db
 
