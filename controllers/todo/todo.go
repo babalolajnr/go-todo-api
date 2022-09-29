@@ -1,10 +1,13 @@
 package todo
 
 import (
+	"errors"
+
 	"github.com/babalolajnr/go-todo-api/controllers/auth"
 	"github.com/babalolajnr/go-todo-api/database"
 	"github.com/babalolajnr/go-todo-api/models"
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 func Todos(c *fiber.Ctx) error {
@@ -60,4 +63,36 @@ func Create(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"status": "created", "message": "Todo Created", "data": todo})
+}
+
+func MarkAsCompleted(c *fiber.Ctx) error {
+	id := c.Params("id")
+
+	// Get Todo
+	db := database.DB.Db
+
+	var todo models.Todo
+
+	if err := db.Preload("User").First(&todo, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "Todo not found", "data": nil})
+		}
+	}
+
+	user, err := auth.AuthenticatedUser(c)
+	
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Could not get authenticated user", "data": nil})
+	}
+	
+	// Check if authenticated user owns the todo item
+	if user.ID != uint(todo.UserID) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"status": "error", "message": "Unauthorized", "data": nil})
+	}
+
+	todo.Completed = true
+
+	db.Save(&todo)
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "Todo marked as completed", "data": todo})
 }

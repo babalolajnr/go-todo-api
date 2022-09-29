@@ -11,4 +11,5 @@ func todoRoutes(api fiber.Router) {
 
 	todo.Get("", middleware.Protected(), todoController.Todos)
 	todo.Post("", middleware.Protected(), todoController.Create)
+	todo.Patch("/:id", middleware.Protected(), todoController.MarkAsCompleted)
 }
