@@ -184,3 +184,16 @@ func ExtractUserId(c *fiber.Ctx) int {
 
 	return id
 }
+
+// Get the authenticated user
+func AuthenticatedUser(c *fiber.Ctx) (user *models.User, err error) {
+	id := ExtractUserId(c)
+
+	user, err = GetUserById(id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
